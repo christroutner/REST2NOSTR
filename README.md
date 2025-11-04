@@ -1,6 +1,6 @@
 # REST2NOSTR Proxy API
 
-A REST API server that proxies the Nostr WebSocket protocol, enabling JavaScript developers to interact with Nostr relays via familiar REST APIs instead of WebSockets.
+A REST API server that proxies the Nostr WebSocket protocol, enabling JavaScript developers to interact with Nostr relays via familiar REST APIs instead of WebSockets. The idea for this app was birthed by [Rik Meijer](https://github.com/rikmeijer) in [this discussion thread](https://github.com/nostr-protocol/nips/issues/1549).
 
 ## Features
 
