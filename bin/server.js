@@ -9,13 +9,13 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import { fileURLToPath } from 'url'
 
-// Load environment variables
-dotenv.config()
-
 // Local libraries
 import config from '../src/config/index.js'
 import Controllers from '../src/controllers/index.js'
 import wlogger from '../src/adapters/wlogger.js'
+
+// Load environment variables
+dotenv.config()
 
 class Server {
   constructor () {
@@ -121,4 +121,3 @@ if (process.argv[1] === __filename) {
 }
 
 export default Server
-

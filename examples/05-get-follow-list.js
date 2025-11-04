@@ -1,10 +1,12 @@
 /*
   Example script for getting a follow list (kind 3 events).
   Refactored to use REST API instead of WebSocket.
+
+  Run the server with `npm start` in the main directory, before running this example.
 */
 
 import { getPublicKey } from 'nostr-tools/pure'
-import { hexToBytes } from '@noble/hashes/utils'
+import { hexToBytes } from '@noble/hashes/utils.js'
 
 const API_URL = process.env.API_URL || 'http://localhost:3000'
 
@@ -49,4 +51,3 @@ try {
 } catch (err) {
   console.error('Error getting follow list:', err)
 }
-

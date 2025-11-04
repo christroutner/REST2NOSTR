@@ -90,4 +90,3 @@ class EventRESTControllerLib {
 }
 
 export default EventRESTControllerLib
-

@@ -99,4 +99,3 @@ class ManageSubscriptionUseCase {
 }
 
 export default ManageSubscriptionUseCase
-

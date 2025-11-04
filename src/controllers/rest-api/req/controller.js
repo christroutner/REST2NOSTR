@@ -124,7 +124,7 @@ class ReqRESTControllerLib {
   async createSubscription (req, res) {
     try {
       const { subId } = req.params
-      let filters = req.body
+      const filters = req.body
 
       if (!subId) {
         return res.status(400).json({
@@ -242,4 +242,3 @@ class ReqRESTControllerLib {
 }
 
 export default ReqRESTControllerLib
-

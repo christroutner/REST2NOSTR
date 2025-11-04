@@ -6,7 +6,7 @@ This directory contains examples refactored from the `nostr-sandbox/` directory 
 
 1. Install dependencies:
 ```bash
-npm install nostr-tools @noble/hashes/utils
+npm install nostr-tools @noble/hashes
 ```
 
 2. Start the REST2NOSTR proxy server:
@@ -53,21 +53,21 @@ node examples/04-read-alice-posts.js
 Retrieves a user's follow list (kind 3 event) using GET /req/:subId.
 
 ```bash
-node examples/14-get-follow-list.js
+node examples/05-get-follow-list.js
 ```
 
 ### 15-update-follow-list.js
 Updates a user's follow list (kind 3 event) using POST /event.
 
 ```bash
-node examples/15-update-follow-list.js
+node examples/06-update-follow-list.js
 ```
 
 ### 17-liking-event.js
 Adds a reaction/like to an event (kind 7 event) using POST /event.
 
 ```bash
-node examples/17-liking-event.js
+node examples/07-liking-event.js
 ```
 
 ## API Endpoints Used

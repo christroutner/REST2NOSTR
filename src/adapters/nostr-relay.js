@@ -238,4 +238,3 @@ class NostrRelayAdapter {
 }
 
 export default NostrRelayAdapter
-

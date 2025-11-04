@@ -52,4 +52,3 @@ class PublishEventUseCase {
 }
 
 export default PublishEventUseCase
-

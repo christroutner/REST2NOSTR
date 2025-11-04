@@ -1,10 +1,12 @@
 /*
   Example to update the follow list with a new list of people to follow.
   Refactored to use REST API instead of WebSocket.
+
+  Run the server with `npm start` in the main directory, before running this example.
 */
 
 import { finalizeEvent, getPublicKey } from 'nostr-tools/pure'
-import { hexToBytes } from '@noble/hashes/utils'
+import { hexToBytes } from '@noble/hashes/utils.js'
 
 const API_URL = process.env.API_URL || 'http://localhost:3000'
 
@@ -59,4 +61,3 @@ try {
 } catch (err) {
   console.error('Error updating follow list:', err)
 }
-

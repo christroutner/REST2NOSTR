@@ -2,9 +2,11 @@
   Example script for adding a reaction (like) to an event.
   Refactored to use REST API instead of WebSocket.
   https://github.com/nostr-protocol/nips/blob/master/25.md
+
+  Run the server with `npm start` in the main directory, before running this example.
 */
 
-import { hexToBytes } from '@noble/hashes/utils'
+import { hexToBytes } from '@noble/hashes/utils.js'
 import { finalizeEvent, getPublicKey } from 'nostr-tools/pure'
 
 const API_URL = process.env.API_URL || 'http://localhost:3000'
@@ -55,4 +57,3 @@ try {
 } catch (err) {
   console.error('Error publishing like:', err)
 }
-

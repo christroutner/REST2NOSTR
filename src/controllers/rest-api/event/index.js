@@ -33,7 +33,7 @@ class EventRouter {
     this.eventRESTController = new EventRESTControllerLib(dependencies)
 
     // Instantiate the router and set the base route.
-    const baseUrl = '/event'
+    this.baseUrl = '/event'
     this.router = express.Router()
   }
 
@@ -48,9 +48,8 @@ class EventRouter {
     this.router.post('/', this.eventRESTController.publishEvent)
 
     // Attach the Controller routes to the Express app.
-    app.use('/event', this.router)
+    app.use(this.baseUrl, this.router)
   }
 }
 
 export default EventRouter
-

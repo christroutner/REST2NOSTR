@@ -6,7 +6,6 @@
 
 // Load individual adapter libraries.
 import NostrRelayAdapter from './nostr-relay.js'
-import Wlogger from './wlogger.js'
 import config from '../config/index.js'
 
 class Adapters {
@@ -33,4 +32,3 @@ class Adapters {
 }
 
 export default Adapters
-

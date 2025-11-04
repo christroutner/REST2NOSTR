@@ -6,21 +6,25 @@
   "scripts": {
     "start": "node bin/server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "docs": "./node_modules/.bin/apidoc -i src/ -o docs"
+    "docs": "./node_modules/.bin/apidoc -i src/ -o docs",
+    "lint": "standard --env mocha --fix"
   },
   "author": "Chris Troutner <chris.troutner@gmail.com>",
   "license": "MIT",
   "description": "REST API proxy for Nostr WebSocket protocol",
   "dependencies": {
-    "express": "4.18.2",
+    "@noble/hashes": "2.0.1",
+    "cors": "2.8.5",
     "dotenv": "16.3.1",
-    "ws": "8.14.2",
+    "express": "4.18.2",
+    "nostr-tools": "2.17.2",
     "winston": "3.11.0",
     "winston-daily-rotate-file": "4.7.1",
-    "cors": "2.8.5"
+    "ws": "8.14.2"
   },
   "devDependencies": {
-    "apidoc": "1.2.0"
+    "apidoc": "1.2.0",
+    "standard": "^17.1.2"
   },
   "apidoc": {
     "title": "REST2NOSTR Proxy API",

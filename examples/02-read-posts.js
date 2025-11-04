@@ -1,6 +1,8 @@
 /*
   Example script for reading posts (kind 1 events) from a relay.
   Refactored to use REST API instead of WebSocket.
+
+  Run the server with `npm start` in the main directory, before running this example.
 */
 
 const API_URL = process.env.API_URL || 'http://localhost:3000'
@@ -40,4 +42,3 @@ try {
 } catch (err) {
   console.error('Error reading posts:', err)
 }
-

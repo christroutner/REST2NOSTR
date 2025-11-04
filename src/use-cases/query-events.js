@@ -27,9 +27,11 @@ class QueryEventsUseCase {
       wlogger.info(`Querying events with subscription ${subscriptionId}`)
 
       const events = []
-      let eoseReceived = false
-      let closedReceived = false
-      let closedMessage = ''
+      const status = {
+        eoseReceived: false,
+        closedReceived: false,
+        closedMessage: ''
+      }
 
       // Create handlers for this query
       const handlers = {
@@ -37,11 +39,11 @@ class QueryEventsUseCase {
           events.push(event)
         },
         onEose: () => {
-          eoseReceived = true
+          status.eoseReceived = true
         },
         onClosed: (message) => {
-          closedReceived = true
-          closedMessage = message
+          status.closedReceived = true
+          status.closedMessage = message
         }
       }
 
@@ -52,7 +54,7 @@ class QueryEventsUseCase {
       const timeout = 30000 // 30 seconds
       const startTime = Date.now()
 
-      while (!eoseReceived && !closedReceived && (Date.now() - startTime) < timeout) {
+      while (!status.eoseReceived && !status.closedReceived && (Date.now() - startTime) < timeout) {
         await new Promise(resolve => setTimeout(resolve, 100))
       }
 
@@ -63,11 +65,11 @@ class QueryEventsUseCase {
         wlogger.warn('Error closing subscription:', err)
       }
 
-      if (closedReceived) {
-        throw new Error(`Subscription closed: ${closedMessage}`)
+      if (status.closedReceived) {
+        throw new Error(`Subscription closed: ${status.closedMessage}`)
       }
 
-      if (!eoseReceived) {
+      if (!status.eoseReceived) {
         wlogger.warn('EOSE not received within timeout')
       }
 
@@ -81,4 +83,3 @@ class QueryEventsUseCase {
 }
 
 export default QueryEventsUseCase
-

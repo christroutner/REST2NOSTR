@@ -1,11 +1,13 @@
 /*
   Example script creating a key-pair for a Nostr account and publishing profile metadata.
   Refactored to use REST API instead of WebSocket.
+
+  Run the server with `npm start` in the main directory, before running this example.
 */
 
 import { generateSecretKey, getPublicKey, finalizeEvent } from 'nostr-tools/pure'
 import * as nip19 from 'nostr-tools/nip19'
-import { bytesToHex } from '@noble/hashes/utils'
+import { bytesToHex } from '@noble/hashes/utils.js'
 
 const API_URL = process.env.API_URL || 'http://localhost:3000'
 
@@ -63,4 +65,3 @@ try {
 } catch (err) {
   console.error('Error publishing event:', err)
 }
-

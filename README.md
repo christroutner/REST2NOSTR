@@ -136,9 +136,9 @@ See the `examples/` directory for refactored versions of common Nostr use cases:
 - `02-read-posts.js`: Read posts from a specific author
 - `03-write-post.js`: Publish a text post
 - `04-read-alice-posts.js`: Read posts from Alice
-- `14-get-follow-list.js`: Get a user's follow list
-- `15-update-follow-list.js`: Update a user's follow list
-- `17-liking-event.js`: Like an event
+- `05-get-follow-list.js`: Get a user's follow list
+- `06-update-follow-list.js`: Update a user's follow list
+- `07-liking-event.js`: Like an event
 
 Run examples:
 ```bash

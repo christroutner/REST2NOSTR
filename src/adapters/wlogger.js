@@ -69,4 +69,3 @@ logger.outputToConsole()
 const wlogger = logger.wlogger
 
 export { wlogger as default, Wlogger }
-
