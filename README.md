@@ -159,9 +159,8 @@ node examples/03-write-post.js
 - `NODE_ENV`: Environment (development, production)
 - `LOG_LEVEL`: Logging level (info, debug, error)
 - `NOSTR_RELAY_URLS`: Comma-separated list of Nostr relay WebSocket URLs (e.g., `wss://relay1.com,wss://relay2.com`) or JSON array (e.g., `["wss://relay1.com","wss://relay2.com"]`). Default: `wss://nostr-relay.psfoundation.info`
-- `NOSTR_RELAY_URL`: (Deprecated, backward compatibility) Single Nostr relay WebSocket URL. Will be converted to an array internally.
 
 ## License
 
-MIT
+[MIT](./LICENSE.md)
 
