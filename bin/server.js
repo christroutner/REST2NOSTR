@@ -34,7 +34,13 @@ class Server {
       // MIDDLEWARE START
       app.use(express.json())
       app.use(express.urlencoded({ extended: true }))
-      app.use(cors({ origin: '*' }))
+
+      app.use(cors({
+        origin: true, // Allow all origins (more reliable than '*')
+        credentials: false, // Set to true if you need to support credentials
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+      }))
 
       // Request logging middleware
       app.use((req, res, next) => {
