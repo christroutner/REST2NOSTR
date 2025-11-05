@@ -62,7 +62,10 @@ describe('#query-events-integration.js', () => {
       assert.equal(events.length, 0)
     })
 
-    it('should handle multiple filters', async () => {
+    it('should handle multiple filters', async function () {
+      // Increase timeout for this test - needs to be longer than use case timeout (30s)
+      this.timeout(35000)
+
       const filters = [
         { kinds: [1], limit: 2 },
         { kinds: [3], limit: 2 }

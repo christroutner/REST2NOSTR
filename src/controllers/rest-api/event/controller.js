@@ -63,7 +63,8 @@ class EventRESTControllerLib {
     try {
       const eventData = req.body
 
-      if (!eventData) {
+      // Check if eventData is missing or empty
+      if (!eventData || (typeof eventData === 'object' && Object.keys(eventData).length === 0)) {
         return res.status(400).json({
           error: 'Event data is required'
         })
@@ -83,7 +84,11 @@ class EventRESTControllerLib {
 
   handleError (err, req, res) {
     wlogger.error('Error in EventRESTController:', err)
-    return res.status(500).json({
+
+    // Return 400 for validation errors, 500 for other errors
+    const statusCode = err.message && err.message.includes('Invalid event structure') ? 400 : 500
+
+    return res.status(statusCode).json({
       error: err.message || 'Internal server error'
     })
   }

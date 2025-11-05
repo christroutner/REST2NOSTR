@@ -44,6 +44,24 @@ class ReqRouter {
     }
 
     // Define the routes and attach the controller.
+    // Handle empty subId case first
+    this.router.get('/', (req, res) => {
+      res.status(400).json({
+        error: 'Subscription ID is required'
+      })
+    })
+    this.router.post('/', (req, res) => {
+      res.status(400).json({
+        error: 'Subscription ID is required'
+      })
+    })
+    this.router.delete('/', (req, res) => {
+      res.status(400).json({
+        error: 'Subscription ID is required'
+      })
+    })
+
+    // Routes with subId parameter
     this.router.get('/:subId', this.reqRESTController.queryEvents)
     this.router.post('/:subId', this.reqRESTController.createSubscription)
     this.router.put('/:subId', this.reqRESTController.createSubscriptionPut)

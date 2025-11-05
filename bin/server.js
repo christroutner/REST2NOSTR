@@ -44,6 +44,15 @@ class Server {
       // Error handling middleware
       app.use((err, req, res, next) => {
         wlogger.error('Express error:', err)
+
+        // Handle JSON parsing errors
+        if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+          return res.status(400).json({
+            error: 'Invalid JSON in request body'
+          })
+        }
+
+        // Default to 500 for other errors
         res.status(500).json({
           error: err.message || 'Internal server error'
         })

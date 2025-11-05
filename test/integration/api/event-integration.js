@@ -223,21 +223,23 @@ describe('#event-integration.js', () => {
 
       const result = await response.json()
 
-      // Should reject invalid event
+      // Should reject invalid event - error response format
       assert.equal(response.status, 400)
-      assert.property(result, 'accepted')
-      assert.isFalse(result.accepted)
+      assert.property(result, 'error')
+      assert.include(result.error, 'Invalid event structure')
     })
 
     it('should return 400 when event data is missing', async () => {
+      // Send empty body - Express will parse as undefined, controller should handle it
       const response = await fetch(`${baseUrl}/event`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(null)
+        body: ''
       })
 
+      // Empty body should be parsed as undefined by Express
       const result = await response.json()
 
       assert.equal(response.status, 400)

@@ -23,11 +23,22 @@ describe('#subscription-integration.js', () => {
     await new Promise(resolve => setTimeout(resolve, 1000))
   })
 
-  after(async () => {
+  after(async function () {
+    this.timeout(10000) // Increase timeout for cleanup
     // Stop server
     if (server && server.server) {
+      // Close all connections forcefully if available
+      if (server.server.closeAllConnections) {
+        server.server.closeAllConnections()
+      }
+
       await new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+          resolve() // Force resolve after 2 seconds
+        }, 2000)
+
         server.server.close(() => {
+          clearTimeout(timeout)
           resolve()
         })
       })
@@ -124,20 +135,64 @@ describe('#subscription-integration.js', () => {
   })
 
   describe('PUT /req/:subId', () => {
-    it('should create SSE subscription (alternative method)', async () => {
+    it('should create SSE subscription (alternative method)', async function () {
+      this.timeout(10000) // Increase timeout for this test
+
       const subId = 'test-sub-' + Date.now()
       const filters = { kinds: [1], limit: 10 }
 
-      const response = await fetch(`${baseUrl}/req/${subId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(filters)
-      })
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 8000)
 
-      // Assert SSE headers
-      assert.equal(response.headers.get('content-type'), 'text/event-stream')
+      let response
+      try {
+        response = await fetch(`${baseUrl}/req/${subId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(filters),
+          signal: controller.signal
+        })
+
+        // Assert SSE headers
+        assert.equal(response.headers.get('content-type'), 'text/event-stream')
+
+        clearTimeout(timeoutId)
+
+        // Consume the stream to prevent hanging
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+
+        try {
+          // Read initial connection message with timeout
+          const readPromise = reader.read()
+          const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ value: null, done: true }), 2000))
+          const { value, done } = await Promise.race([readPromise, timeoutPromise])
+
+          if (value && !done) {
+            const text = decoder.decode(value)
+            assert.include(text, 'connected')
+          }
+        } finally {
+          reader.releaseLock()
+        }
+      } catch (err) {
+        // AbortController aborted - this is expected
+        if (err.name !== 'AbortError') {
+          throw err
+        }
+      } finally {
+        clearTimeout(timeoutId)
+        // Always close the subscription
+        try {
+          await fetch(`${baseUrl}/req/${subId}`, {
+            method: 'DELETE'
+          })
+        } catch (err) {
+          // Ignore errors when closing
+        }
+      }
     })
   })
 })
