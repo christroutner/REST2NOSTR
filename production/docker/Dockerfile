@@ -60,7 +60,7 @@ WORKDIR /home/safeuser/REST2NOSTR
 RUN npm install
 
 # Generate the API docs
-#RUN npm run docs
+RUN npm run docs
 
 #VOLUME /home/safeuser/keys
 

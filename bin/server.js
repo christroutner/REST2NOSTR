@@ -8,6 +8,7 @@ import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
 import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
 
 // Local libraries
 import config from '../src/config/index.js'
@@ -67,6 +68,11 @@ class Server {
       // Attach REST API controllers to the app.
       this.controllers.attachRESTControllers(app)
 
+      // Serve static assets from docs directory
+      const __filename = fileURLToPath(import.meta.url)
+      const __dirname = dirname(__filename)
+      app.use('/assets', express.static(join(__dirname, '..', 'docs', 'assets')))
+
       // Health check endpoint
       app.get('/health', (req, res) => {
         res.json({
@@ -78,17 +84,8 @@ class Server {
 
       // Root endpoint
       app.get('/', (req, res) => {
-        res.json({
-          service: 'REST2NOSTR Proxy API',
-          version: config.version,
-          endpoints: {
-            'POST /event': 'Publish a Nostr event',
-            'GET /req/:subId': 'Query events (stateless)',
-            'POST /req/:subId': 'Create subscription (SSE)',
-            'PUT /req/:subId': 'Create subscription (SSE)',
-            'DELETE /req/:subId': 'Close subscription'
-          }
-        })
+        const docsPath = join(__dirname, '..', 'docs', 'index.html')
+        res.sendFile(docsPath)
       })
 
       // MIDDLEWARE END
