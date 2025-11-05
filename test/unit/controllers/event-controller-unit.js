@@ -105,12 +105,26 @@ describe('#event-controller.js', () => {
       const req = createMockRequestWithBody(mockKind1Event)
       const res = createMockResponse()
 
-      mockUseCases.publishEvent.execute.rejects(new Error('Invalid event structure'))
+      mockUseCases.publishEvent.execute.rejects(new Error('Network error'))
 
       await uut.publishEvent(req, res)
 
       // Assert error response
       assert.equal(res.statusValue, 500)
+      assert.property(res.jsonData, 'error')
+      assert.include(res.jsonData.error, 'Network error')
+    })
+
+    it('should return 400 for validation errors', async () => {
+      const req = createMockRequestWithBody(mockKind1Event)
+      const res = createMockResponse()
+
+      mockUseCases.publishEvent.execute.rejects(new Error('Invalid event structure'))
+
+      await uut.publishEvent(req, res)
+
+      // Assert validation error returns 400
+      assert.equal(res.statusValue, 400)
       assert.property(res.jsonData, 'error')
       assert.include(res.jsonData.error, 'Invalid event structure')
     })

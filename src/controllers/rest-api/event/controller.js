@@ -86,7 +86,9 @@ class EventRESTControllerLib {
     wlogger.error('Error in EventRESTController:', err)
 
     // Return 400 for validation errors, 500 for other errors
-    const statusCode = err.message && err.message.includes('Invalid event structure') ? 400 : 500
+    // Validation errors indicate the client sent bad data
+    const isValidationError = err.message && err.message.includes('Invalid event structure')
+    const statusCode = isValidationError ? 400 : 500
 
     return res.status(statusCode).json({
       error: err.message || 'Internal server error'
