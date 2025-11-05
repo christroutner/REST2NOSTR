@@ -5,7 +5,7 @@
   Run the server with `npm start` in the main directory, before running this example.
 */
 
-const API_URL = process.env.API_URL || 'http://localhost:3000'
+const API_URL = process.env.API_URL || 'http://localhost:5942'
 
 // JB55's public key
 const jb55 = '32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245'

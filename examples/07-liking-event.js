@@ -9,7 +9,7 @@
 import { hexToBytes } from '@noble/hashes/utils.js'
 import { finalizeEvent, getPublicKey } from 'nostr-tools/pure'
 
-const API_URL = process.env.API_URL || 'http://localhost:3000'
+const API_URL = process.env.API_URL || 'http://localhost:5942'
 
 const bobPrivKeyHex = 'd2e71a977bc3900d6b0f787421e3d1a666cd12ca625482b0d9eeffd23489c99f'
 const bobPrivKeyBin = hexToBytes(bobPrivKeyHex)

@@ -8,7 +8,7 @@
 import { getPublicKey } from 'nostr-tools/pure'
 import { hexToBytes } from '@noble/hashes/utils.js'
 
-const API_URL = process.env.API_URL || 'http://localhost:3000'
+const API_URL = process.env.API_URL || 'http://localhost:5942'
 
 // Alice is our user to get the follow list.
 const alicePrivKeyHex = '3292a48aa331aeccce003d50d70fbd79617ba91860abbd2c78fa4a8301e36bc0'

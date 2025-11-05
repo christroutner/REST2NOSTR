@@ -9,7 +9,7 @@ import { generateSecretKey, getPublicKey, finalizeEvent } from 'nostr-tools/pure
 import * as nip19 from 'nostr-tools/nip19'
 import { bytesToHex } from '@noble/hashes/utils.js'
 
-const API_URL = process.env.API_URL || 'http://localhost:3000'
+const API_URL = process.env.API_URL || 'http://localhost:5942'
 
 // Generate keys
 const sk = generateSecretKey() // `sk` is a Uint8Array
