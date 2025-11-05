@@ -15,7 +15,7 @@ const version = pkgInfo.version
 
 export default {
   // Server port
-  port: process.env.PORT || 3000,
+  port: process.env.PORT || 5942,
 
   // Environment
   env: process.env.NODE_ENV || 'development',
@@ -42,8 +42,9 @@ export default {
     if (process.env.NOSTR_RELAY_URL) {
       return [process.env.NOSTR_RELAY_URL]
     }
+
     // Default
-    return ['wss://nostr-relay.psfoundation.info']
+    return ['wss://nostr-relay.psfoundation.info', 'wss://relay.damus.io']
   })(),
 
   // Version
