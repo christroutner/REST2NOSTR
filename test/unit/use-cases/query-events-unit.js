@@ -98,7 +98,7 @@ describe('#query-events.js', () => {
     })
 
     it('should handle timeout when EOSE not received', async function () {
-      this.timeout(35000) // Use case timeout is 30s, add buffer
+      this.timeout(5000) // Reduced timeout since we're using stubs
       const filters = [{ kinds: [1] }]
       const subscriptionId = 'test-sub-123'
 
@@ -109,9 +109,33 @@ describe('#query-events.js', () => {
 
       mockAdapters.nostrRelay.sendClose.resolves()
 
-      // This will actually wait for the 30 second timeout
-      // The use case will return empty array when timeout is reached
-      const result = await uut.execute(filters, subscriptionId)
+      // Stub Date.now() to simulate time passing
+      // First call sets startTime, subsequent calls should exceed timeout
+      const realStartTime = Date.now()
+      let callCount = 0
+      sandbox.stub(Date, 'now').callsFake(() => {
+        callCount++
+        // Allow first few calls to return real time (logger + startTime assignment)
+        // After that, return time that exceeds timeout (30s = 30000ms)
+        if (callCount <= 2) {
+          return realStartTime
+        } else {
+          return realStartTime + 30001
+        }
+      })
+
+      // Stub setTimeout to execute immediately
+      const originalSetTimeout = global.setTimeout
+      sandbox.stub(global, 'setTimeout').callsFake((fn, delay) => {
+        // Execute the callback immediately but asynchronously
+        return originalSetTimeout(fn, 0)
+      })
+
+      // Start the execute promise
+      const resultPromise = uut.execute(filters, subscriptionId)
+
+      // Wait for the promise to resolve
+      const result = await resultPromise
 
       // Should return empty array after timeout
       assert.isArray(result)
