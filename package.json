@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "start": "node bin/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
     "docs": "./node_modules/.bin/apidoc -i src/ -o docs",
-    "lint": "standard --env mocha --fix"
+    "lint": "standard --env mocha --fix",
+    "test": "npm run lint && TEST=unit c8 mocha 'test/unit/**/*.js' --exit",
+    "test:integration": "mocha --timeout 25000 'test/integration/**/*.js'",
+    "coverage": "c8 --reporter=html mocha 'test/unit/**/*.js' --exit"
   },
   "author": "Chris Troutner <chris.troutner@gmail.com>",
   "license": "MIT",
