@@ -14,4 +14,6 @@ services:
       #  - mongo-slp-indexer
       ports:
         - '5942:5942' # <host port>:<container port>
+      volumes:
+        - ./start-rest2nostr.sh:/home/safeuser/REST2NOSTR/start-rest2nostr.sh
       restart: always
