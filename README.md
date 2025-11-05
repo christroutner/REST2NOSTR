@@ -1,6 +1,12 @@
 # REST2NOSTR Proxy API
 
-A REST API server that proxies the Nostr WebSocket protocol, enabling JavaScript developers to interact with Nostr relays via familiar REST APIs instead of WebSockets. The idea for this app was birthed by [Rik Meijer](https://github.com/rikmeijer) in [this discussion thread](https://github.com/nostr-protocol/nips/issues/1549).
+A REST API server that proxies the Nostr WebSocket protocol, enabling JavaScript developers to interact with Nostr relays via familiar REST APIs instead of WebSockets. 
+
+If you are a developer thinking of integrating this proxy in front of your Nostr Relay, you should start by checking out the [code examples](./examples/). These show how to implement common workflows.
+
+
+## About
+The idea for this app was birthed by [Rik Meijer](https://github.com/rikmeijer) in [this discussion thread](https://github.com/nostr-protocol/nips/issues/1549). It was vibe coded in a few hours by [Chris Troutner](https://github.com/christroutner). Prompts used to kick off the AI codding is saved in the [dev-docs folder](./dev-docs/).
 
 ## Features
 
