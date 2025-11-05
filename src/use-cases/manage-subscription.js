@@ -67,6 +67,10 @@ class ManageSubscriptionUseCase {
             onClosed(message)
           }
           // Clean up subscription if any relay closes it
+          const subscriptionInfo = this.activeSubscriptions.get(subscriptionId)
+          if (subscriptionInfo && subscriptionInfo.eoseTimeoutId) {
+            clearTimeout(subscriptionInfo.eoseTimeoutId)
+          }
           this.activeSubscriptions.delete(subscriptionId)
         }
       }
@@ -86,6 +90,12 @@ class ManageSubscriptionUseCase {
             relayStatuses[index].eoseReceived = true
             // Check if all relays have sent EOSE
             if (relayStatuses.every(s => s.eoseReceived)) {
+              // Clear the timeout since we got EOSE from all relays
+              const subscriptionInfo = this.activeSubscriptions.get(subscriptionId)
+              if (subscriptionInfo && subscriptionInfo.eoseTimeoutId) {
+                clearTimeout(subscriptionInfo.eoseTimeoutId)
+                subscriptionInfo.eoseTimeoutId = null
+              }
               handlers.onEose()
             }
           },
@@ -103,7 +113,8 @@ class ManageSubscriptionUseCase {
         relaySubscriptions,
         handlers,
         seenEventIds,
-        relayStatuses
+        relayStatuses,
+        eoseTimeoutId: null
       })
 
       // Subscribe to all relays concurrently
@@ -112,14 +123,39 @@ class ManageSubscriptionUseCase {
       // Check if any relay subscription failed and clean up if so
       const hasFailures = results.some(result => result.status === 'rejected')
       if (hasFailures) {
+        const subscriptionInfo = this.activeSubscriptions.get(subscriptionId)
+        if (subscriptionInfo && subscriptionInfo.eoseTimeoutId) {
+          clearTimeout(subscriptionInfo.eoseTimeoutId)
+        }
         this.activeSubscriptions.delete(subscriptionId)
         const errors = results
           .filter(result => result.status === 'rejected')
           .map(result => result.reason)
         throw new Error(`Failed to create subscription on some relays: ${errors.map(e => e.message).join(', ')}`)
       }
+
+      // Set up EOSE timeout fallback - if not all relays send EOSE within 10 seconds, call onEose anyway
+      const subscriptionInfo = this.activeSubscriptions.get(subscriptionId)
+      const EOSE_TIMEOUT_MS = 10000 // 10 seconds
+      subscriptionInfo.eoseTimeoutId = setTimeout(() => {
+        // Check if subscription still exists and if all relays have sent EOSE
+        if (this.activeSubscriptions.has(subscriptionId)) {
+          const currentInfo = this.activeSubscriptions.get(subscriptionId)
+          const allEoseReceived = currentInfo.relayStatuses.every(s => s.eoseReceived)
+          if (!allEoseReceived) {
+            wlogger.warn(`EOSE timeout reached for subscription ${subscriptionId} - calling onEose callback anyway`)
+            if (handlers.onEose) {
+              handlers.onEose()
+            }
+          }
+        }
+      }, EOSE_TIMEOUT_MS)
     } catch (err) {
       wlogger.error('Error creating subscription:', err)
+      const subscriptionInfo = this.activeSubscriptions.get(subscriptionId)
+      if (subscriptionInfo && subscriptionInfo.eoseTimeoutId) {
+        clearTimeout(subscriptionInfo.eoseTimeoutId)
+      }
       this.activeSubscriptions.delete(subscriptionId)
       throw err
     }
@@ -133,6 +169,7 @@ class ManageSubscriptionUseCase {
   async closeSubscription (subscriptionId) {
     try {
       if (!this.activeSubscriptions.has(subscriptionId)) {
+        // Subscription doesn't exist - throw error
         throw new Error(`Subscription ${subscriptionId} not found`)
       }
 
@@ -140,6 +177,11 @@ class ManageSubscriptionUseCase {
 
       const subscriptionInfo = this.activeSubscriptions.get(subscriptionId)
       const { relaySubscriptions } = subscriptionInfo
+
+      // Clear EOSE timeout if it exists
+      if (subscriptionInfo.eoseTimeoutId) {
+        clearTimeout(subscriptionInfo.eoseTimeoutId)
+      }
 
       // Close subscriptions on all relays concurrently
       const closePromises = Array.from(relaySubscriptions.entries()).map(async ([relayIndex, relaySubscriptionId]) => {

@@ -169,7 +169,7 @@ class Adapters {
           await new Promise(resolve => setTimeout(resolve, 100))
         }
 
-        // Clean up subscription
+        // Clean up subscription - always try to close, even if EOSE didn't come
         try {
           await relay.sendClose(subscriptionIdForRelay)
         } catch (err) {
@@ -179,7 +179,18 @@ class Adapters {
         if (status.closedReceived) {
           throw new Error(`Subscription closed on ${relay.relayUrl}: ${status.closedMessage}`)
         }
+
+        // If EOSE never came but timeout expired, that's OK - we proceed with what we got
+        if (!status.eoseReceived && (Date.now() - startTime) >= timeout) {
+          // Timeout reached without EOSE - proceed anyway with events collected so far
+        }
       } catch (err) {
+        // Ensure cleanup even on error
+        try {
+          await relay.sendClose(subscriptionIdForRelay)
+        } catch (closeErr) {
+          // Ignore close errors
+        }
         // Log error but don't fail the entire query
         console.warn(`Query failed for relay ${relay.relayUrl}:`, err.message)
       }
