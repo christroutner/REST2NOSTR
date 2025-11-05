@@ -11,10 +11,6 @@ import {
   mockKind1Event,
   mockInvalidEventMissingId
 } from '../mocks/event-mocks.js'
-import {
-  mockSendEventSuccess,
-  mockSendEventFailure
-} from '../mocks/nostr-relay-mocks.js'
 
 // Unit under test
 import PublishEventUseCase from '../../../src/use-cases/publish-event.js'
@@ -27,11 +23,13 @@ describe('#publish-event.js', () => {
   beforeEach(() => {
     sandbox = sinon.createSandbox()
 
-    // Create mock adapters
+    // Create mock adapters with multiple relays support
     mockAdapters = {
-      nostrRelay: {
-        sendEvent: sandbox.stub()
-      }
+      nostrRelays: [
+        { relayUrl: 'wss://relay1.example.com' },
+        { relayUrl: 'wss://relay2.example.com' }
+      ],
+      broadcastEvent: sandbox.stub()
     }
 
     uut = new PublishEventUseCase({ adapters: mockAdapters })
@@ -42,15 +40,18 @@ describe('#publish-event.js', () => {
   })
 
   describe('#execute()', () => {
-    it('should successfully publish a valid event', async () => {
-      // Mock adapter response
-      mockAdapters.nostrRelay.sendEvent.resolves(mockSendEventSuccess)
+    it('should successfully publish a valid event to all relays', async () => {
+      // Mock broadcast response - at least one relay accepts
+      mockAdapters.broadcastEvent.resolves([
+        { accepted: true, message: 'event saved', relayUrl: 'wss://relay1.example.com', success: true },
+        { accepted: true, message: 'event saved', relayUrl: 'wss://relay2.example.com', success: true }
+      ])
 
       const result = await uut.execute(mockKind1Event)
 
       // Assert adapter was called correctly
-      assert.isTrue(mockAdapters.nostrRelay.sendEvent.calledOnce)
-      const callArgs = mockAdapters.nostrRelay.sendEvent.getCall(0).args[0]
+      assert.isTrue(mockAdapters.broadcastEvent.calledOnce)
+      const callArgs = mockAdapters.broadcastEvent.getCall(0).args[0]
       assert.equal(callArgs.id, mockKind1Event.id)
       assert.equal(callArgs.kind, mockKind1Event.kind)
 
@@ -58,13 +59,21 @@ describe('#publish-event.js', () => {
       assert.property(result, 'accepted')
       assert.property(result, 'message')
       assert.property(result, 'eventId')
+      assert.property(result, 'relayResults')
+      assert.property(result, 'acceptedCount')
+      assert.property(result, 'totalRelays')
       assert.isTrue(result.accepted)
       assert.equal(result.eventId, mockKind1Event.id)
+      assert.equal(result.acceptedCount, 2)
+      assert.equal(result.totalRelays, 2)
     })
 
-    it('should handle event rejection from relay', async () => {
-      // Mock adapter response (rejected)
-      mockAdapters.nostrRelay.sendEvent.resolves(mockSendEventFailure)
+    it('should handle event rejection from all relays', async () => {
+      // Mock broadcast response - all relays reject
+      mockAdapters.broadcastEvent.resolves([
+        { accepted: false, message: 'duplicate', relayUrl: 'wss://relay1.example.com', success: true },
+        { accepted: false, message: 'duplicate', relayUrl: 'wss://relay2.example.com', success: true }
+      ])
 
       const result = await uut.execute(mockKind1Event)
 
@@ -72,6 +81,22 @@ describe('#publish-event.js', () => {
       assert.isFalse(result.accepted)
       assert.property(result, 'message')
       assert.equal(result.eventId, mockKind1Event.id)
+      assert.equal(result.acceptedCount, 0)
+    })
+
+    it('should succeed if at least one relay accepts', async () => {
+      // Mock broadcast response - one accepts, one rejects
+      mockAdapters.broadcastEvent.resolves([
+        { accepted: true, message: 'event saved', relayUrl: 'wss://relay1.example.com', success: true },
+        { accepted: false, message: 'duplicate', relayUrl: 'wss://relay2.example.com', success: true }
+      ])
+
+      const result = await uut.execute(mockKind1Event)
+
+      // Should succeed if at least one accepts
+      assert.isTrue(result.accepted)
+      assert.equal(result.acceptedCount, 1)
+      assert.equal(result.totalRelays, 2)
     })
 
     it('should throw error for invalid event structure', async () => {
@@ -80,21 +105,21 @@ describe('#publish-event.js', () => {
         assert.equal(true, false, 'unexpected result')
       } catch (err) {
         assert.include(err.message, 'Invalid event structure')
-        assert.isFalse(mockAdapters.nostrRelay.sendEvent.called)
+        assert.isFalse(mockAdapters.broadcastEvent.called)
       }
     })
 
     it('should handle adapter errors', async () => {
       // Mock adapter error
       const adapterError = new Error('Network error')
-      mockAdapters.nostrRelay.sendEvent.rejects(adapterError)
+      mockAdapters.broadcastEvent.rejects(adapterError)
 
       try {
         await uut.execute(mockKind1Event)
         assert.equal(true, false, 'unexpected result')
       } catch (err) {
         assert.equal(err.message, 'Network error')
-        assert.isTrue(mockAdapters.nostrRelay.sendEvent.calledOnce)
+        assert.isTrue(mockAdapters.broadcastEvent.calledOnce)
       }
     })
 
@@ -108,13 +133,13 @@ describe('#publish-event.js', () => {
       }
     })
 
-    it('should require NostrRelay adapter', () => {
+    it('should require NostrRelay adapters array', () => {
       try {
         // eslint-disable-next-line no-new
         new PublishEventUseCase({ adapters: {} })
         assert.equal(true, false, 'unexpected result')
       } catch (err) {
-        assert.include(err.message, 'NostrRelay adapter required')
+        assert.include(err.message, 'NostrRelay adapters array required')
       }
     })
   })

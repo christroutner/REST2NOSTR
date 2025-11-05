@@ -1,6 +1,6 @@
 # REST2NOSTR Proxy API
 
-A REST API server that proxies the Nostr WebSocket protocol, enabling JavaScript developers to interact with Nostr relays via familiar REST APIs instead of WebSockets. 
+A REST API server that proxies the Nostr WebSocket protocol, enabling app developers to interact with Nostr relays via familiar REST APIs instead of WebSockets. 
 
 If you are a developer thinking of integrating this proxy in front of your Nostr Relay, you should start by checking out the [code examples](./examples/). These show how to implement common workflows.
 
@@ -37,8 +37,10 @@ npm install
 PORT=3000
 NODE_ENV=development
 LOG_LEVEL=info
-NOSTR_RELAY_URL=wss://nostr-relay.psfoundation.info
+NOSTR_RELAY_URLS=wss://nostr-relay.psfoundation.info,wss://relay.damus.io
 ```
+
+**Note:** `NOSTR_RELAY_URLS` accepts multiple relay URLs as a comma-separated string or as a JSON array. The application will broadcast events to all relays and query events from all relays, merging and de-duplicating results. For backward compatibility, `NOSTR_RELAY_URL` (singular) is still supported and will be converted to an array.
 
 3. Start the server:
 ```bash
@@ -156,7 +158,8 @@ node examples/03-write-post.js
 - `PORT`: Server port (default: 3000)
 - `NODE_ENV`: Environment (development, production)
 - `LOG_LEVEL`: Logging level (info, debug, error)
-- `NOSTR_RELAY_URL`: Default Nostr relay WebSocket URL
+- `NOSTR_RELAY_URLS`: Comma-separated list of Nostr relay WebSocket URLs (e.g., `wss://relay1.com,wss://relay2.com`) or JSON array (e.g., `["wss://relay1.com","wss://relay2.com"]`). Default: `wss://nostr-relay.psfoundation.info`
+- `NOSTR_RELAY_URL`: (Deprecated, backward compatibility) Single Nostr relay WebSocket URL. Will be converted to an array internally.
 
 ## License
 

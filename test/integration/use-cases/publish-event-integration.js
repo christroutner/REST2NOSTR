@@ -24,9 +24,11 @@ describe('#publish-event-integration.js', () => {
   })
 
   after(async () => {
-    // Clean up adapters
-    if (adapters && adapters.nostrRelay) {
-      await adapters.nostrRelay.disconnect()
+    // Clean up adapters - disconnect from all relays
+    if (adapters && adapters.nostrRelays) {
+      await Promise.allSettled(
+        adapters.nostrRelays.map(relay => relay.disconnect())
+      )
     }
   })
 

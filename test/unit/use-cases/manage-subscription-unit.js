@@ -20,12 +20,20 @@ describe('#manage-subscription.js', () => {
   beforeEach(() => {
     sandbox = sinon.createSandbox()
 
-    // Create mock adapters
+    // Create mock adapters with multiple relays support
+    const mockRelay1 = {
+      relayUrl: 'wss://relay1.example.com',
+      sendReq: sandbox.stub(),
+      sendClose: sandbox.stub()
+    }
+    const mockRelay2 = {
+      relayUrl: 'wss://relay2.example.com',
+      sendReq: sandbox.stub(),
+      sendClose: sandbox.stub()
+    }
+
     mockAdapters = {
-      nostrRelay: {
-        sendReq: sandbox.stub(),
-        sendClose: sandbox.stub()
-      }
+      nostrRelays: [mockRelay1, mockRelay2]
     }
 
     uut = new ManageSubscriptionUseCase({ adapters: mockAdapters })
@@ -36,7 +44,7 @@ describe('#manage-subscription.js', () => {
   })
 
   describe('#createSubscription()', () => {
-    it('should successfully create a subscription', async () => {
+    it('should successfully create a subscription across all relays', async () => {
       const subscriptionId = 'test-sub-123'
       const filters = [{ kinds: [1] }]
       let onEventCalled = false
@@ -53,31 +61,35 @@ describe('#manage-subscription.js', () => {
         onClosedCalled = true
       }
 
-      // Mock adapter to capture handlers
-      let handlersCaptured = null
-      mockAdapters.nostrRelay.sendReq.callsFake((subId, filterArray, handlers) => {
-        handlersCaptured = handlers
-      })
+      // Mock adapters to resolve
+      mockAdapters.nostrRelays[0].sendReq.resolves()
+      mockAdapters.nostrRelays[1].sendReq.resolves()
 
       await uut.createSubscription(subscriptionId, filters, onEvent, onEose, onClosed)
 
-      // Assert adapter was called
-      assert.isTrue(mockAdapters.nostrRelay.sendReq.calledOnce)
-      const sendReqArgs = mockAdapters.nostrRelay.sendReq.getCall(0).args
-      assert.equal(sendReqArgs[0], subscriptionId)
-      assert.deepEqual(sendReqArgs[1], filters)
+      // Assert adapters were called for both relays
+      assert.isTrue(mockAdapters.nostrRelays[0].sendReq.calledOnce)
+      assert.isTrue(mockAdapters.nostrRelays[1].sendReq.calledOnce)
 
       // Assert subscription is tracked
       assert.isTrue(uut.hasSubscription(subscriptionId))
 
-      // Test handlers are called
-      handlersCaptured.onEvent(mockKind1Event)
+      // Test handlers - get them from the subscription info
+      const subscriptionInfo = uut.activeSubscriptions.get(subscriptionId)
+      const handlers = subscriptionInfo.handlers
+
+      // Test event handler (should de-duplicate)
+      handlers.onEvent(mockKind1Event)
       assert.isTrue(onEventCalled)
 
-      handlersCaptured.onEose()
+      // Simulate EOSE from both relays
+      const relayStatuses = subscriptionInfo.relayStatuses
+      relayStatuses[0].eoseReceived = true
+      relayStatuses[1].eoseReceived = true
+      handlers.onEose()
       assert.isTrue(onEoseCalled)
 
-      handlersCaptured.onClosed('test message')
+      handlers.onClosed('test message')
       assert.isTrue(onClosedCalled)
       assert.isFalse(uut.hasSubscription(subscriptionId))
     })
@@ -86,7 +98,8 @@ describe('#manage-subscription.js', () => {
       const subscriptionId = 'test-sub-123'
       const filters = [{ kinds: [1] }]
 
-      mockAdapters.nostrRelay.sendReq.resolves()
+      mockAdapters.nostrRelays[0].sendReq.resolves()
+      mockAdapters.nostrRelays[1].sendReq.resolves()
 
       await uut.createSubscription(subscriptionId, filters)
 
@@ -102,13 +115,14 @@ describe('#manage-subscription.js', () => {
       const subscriptionId = 'test-sub-123'
       const filters = [{ kinds: [1] }]
 
-      mockAdapters.nostrRelay.sendReq.rejects(new Error('Connection error'))
+      mockAdapters.nostrRelays[0].sendReq.rejects(new Error('Connection error'))
+      mockAdapters.nostrRelays[1].sendReq.resolves()
 
       try {
         await uut.createSubscription(subscriptionId, filters)
         assert.equal(true, false, 'unexpected result')
       } catch (err) {
-        assert.include(err.message, 'Connection error')
+        // Should clean up even if some relays fail
         assert.isFalse(uut.hasSubscription(subscriptionId))
       }
     })
@@ -117,27 +131,29 @@ describe('#manage-subscription.js', () => {
       const subscriptionId = 'test-sub-123'
       const filters = [{ kinds: [1] }]
 
-      let handlersCaptured = null
-      mockAdapters.nostrRelay.sendReq.callsFake((subId, filterArray, handlers) => {
-        handlersCaptured = handlers
-      })
+      mockAdapters.nostrRelays[0].sendReq.resolves()
+      mockAdapters.nostrRelays[1].sendReq.resolves()
 
       await uut.createSubscription(subscriptionId, filters, null, null, null)
 
       // Should not throw when handlers are null
-      handlersCaptured.onEvent(mockKind1Event)
-      handlersCaptured.onEose()
-      handlersCaptured.onClosed('test')
+      const subscriptionInfo = uut.activeSubscriptions.get(subscriptionId)
+      const handlers = subscriptionInfo.handlers
+      handlers.onEvent(mockKind1Event)
+      handlers.onEose()
+      handlers.onClosed('test')
     })
   })
 
   describe('#closeSubscription()', () => {
-    it('should successfully close a subscription', async () => {
+    it('should successfully close a subscription across all relays', async () => {
       const subscriptionId = 'test-sub-123'
       const filters = [{ kinds: [1] }]
 
-      mockAdapters.nostrRelay.sendReq.resolves()
-      mockAdapters.nostrRelay.sendClose.resolves()
+      mockAdapters.nostrRelays[0].sendReq.resolves()
+      mockAdapters.nostrRelays[1].sendReq.resolves()
+      mockAdapters.nostrRelays[0].sendClose.resolves()
+      mockAdapters.nostrRelays[1].sendClose.resolves()
 
       // Create subscription first
       await uut.createSubscription(subscriptionId, filters)
@@ -146,9 +162,9 @@ describe('#manage-subscription.js', () => {
       // Close subscription
       await uut.closeSubscription(subscriptionId)
 
-      // Assert adapter was called
-      assert.isTrue(mockAdapters.nostrRelay.sendClose.calledOnce)
-      assert.equal(mockAdapters.nostrRelay.sendClose.getCall(0).args[0], subscriptionId)
+      // Assert adapters were called for both relays
+      assert.isTrue(mockAdapters.nostrRelays[0].sendClose.calledOnce)
+      assert.isTrue(mockAdapters.nostrRelays[1].sendClose.calledOnce)
 
       // Assert subscription is removed
       assert.isFalse(uut.hasSubscription(subscriptionId))
@@ -169,20 +185,19 @@ describe('#manage-subscription.js', () => {
       const subscriptionId = 'test-sub-123'
       const filters = [{ kinds: [1] }]
 
-      mockAdapters.nostrRelay.sendReq.resolves()
-      mockAdapters.nostrRelay.sendClose.rejects(new Error('Close error'))
+      mockAdapters.nostrRelays[0].sendReq.resolves()
+      mockAdapters.nostrRelays[1].sendReq.resolves()
+      mockAdapters.nostrRelays[0].sendClose.rejects(new Error('Close error'))
+      mockAdapters.nostrRelays[1].sendClose.resolves()
 
       // Create subscription first
       await uut.createSubscription(subscriptionId, filters)
 
-      try {
-        await uut.closeSubscription(subscriptionId)
-        assert.equal(true, false, 'unexpected result')
-      } catch (err) {
-        assert.include(err.message, 'Close error')
-        // Should still clean up
-        assert.isFalse(uut.hasSubscription(subscriptionId))
-      }
+      // Close should succeed even if one relay fails
+      await uut.closeSubscription(subscriptionId)
+
+      // Should still clean up
+      assert.isFalse(uut.hasSubscription(subscriptionId))
     })
   })
 
@@ -195,7 +210,8 @@ describe('#manage-subscription.js', () => {
       const subscriptionId = 'test-sub-123'
       const filters = [{ kinds: [1] }]
 
-      mockAdapters.nostrRelay.sendReq.resolves()
+      mockAdapters.nostrRelays[0].sendReq.resolves()
+      mockAdapters.nostrRelays[1].sendReq.resolves()
 
       assert.isFalse(uut.hasSubscription(subscriptionId))
       await uut.createSubscription(subscriptionId, filters)
@@ -214,13 +230,13 @@ describe('#manage-subscription.js', () => {
       }
     })
 
-    it('should require NostrRelay adapter', () => {
+    it('should require NostrRelay adapters array', () => {
       try {
         // eslint-disable-next-line no-new
         new ManageSubscriptionUseCase({ adapters: {} })
         assert.equal(true, false, 'unexpected result')
       } catch (err) {
-        assert.include(err.message, 'NostrRelay adapter required')
+        assert.include(err.message, 'NostrRelay adapters array required')
       }
     })
   })

@@ -11,14 +11,15 @@ class ManageSubscriptionUseCase {
     if (!this.adapters) {
       throw new Error('Adapters instance required')
     }
-    if (!this.adapters.nostrRelay) {
-      throw new Error('NostrRelay adapter required')
+    if (!this.adapters.nostrRelays || !Array.isArray(this.adapters.nostrRelays) || this.adapters.nostrRelays.length === 0) {
+      throw new Error('NostrRelay adapters array required')
     }
-    this.activeSubscriptions = new Map() // Map subscriptionId to handlers
+    // Map subscriptionId to { relaySubscriptions: Map<relayIndex, subscriptionId>, handlers, seenEventIds }
+    this.activeSubscriptions = new Map()
   }
 
   /**
-   * Create a subscription for SSE streaming
+   * Create a subscription for SSE streaming across all relays
    * @param {string} subscriptionId - Unique subscription ID
    * @param {Array} filters - Array of filter objects
    * @param {Function} onEvent - Callback for events
@@ -32,15 +33,31 @@ class ManageSubscriptionUseCase {
         throw new Error(`Subscription ${subscriptionId} already exists`)
       }
 
-      wlogger.info(`Creating subscription ${subscriptionId}`)
+      wlogger.info(`Creating subscription ${subscriptionId} across ${this.adapters.nostrRelays.length} relay(s)`)
 
+      // Track seen event IDs to de-duplicate across relays
+      const seenEventIds = new Set()
+
+      // Track EOSE and CLOSED status per relay
+      const relayStatuses = this.adapters.nostrRelays.map(() => ({
+        eoseReceived: false,
+        closedReceived: false
+      }))
+
+      // Create unified handlers that merge events from all relays
       const handlers = {
         onEvent: (event) => {
-          if (onEvent) {
-            onEvent(event)
+          // De-duplicate events by ID across all relays
+          if (event && event.id && !seenEventIds.has(event.id)) {
+            seenEventIds.add(event.id)
+            if (onEvent) {
+              onEvent(event)
+            }
           }
         },
         onEose: () => {
+          // Call onEose only once when all relays have sent EOSE
+          // This is called from the per-relay handler only when all relays have EOSE
           if (onEose) {
             onEose()
           }
@@ -49,15 +66,58 @@ class ManageSubscriptionUseCase {
           if (onClosed) {
             onClosed(message)
           }
-          // Clean up subscription
+          // Clean up subscription if any relay closes it
           this.activeSubscriptions.delete(subscriptionId)
         }
       }
 
-      this.activeSubscriptions.set(subscriptionId, handlers)
+      // Create subscription per relay with unique subscription IDs
+      const relaySubscriptions = new Map()
+      const subscriptionPromises = this.adapters.nostrRelays.map(async (relay, index) => {
+        const relaySubscriptionId = `${subscriptionId}-relay-${index}`
+        relaySubscriptions.set(index, relaySubscriptionId)
 
-      // Send REQ message
-      await this.adapters.nostrRelay.sendReq(subscriptionId, filters, handlers)
+        // Create per-relay handlers that update shared state
+        const relayHandlers = {
+          onEvent: (event) => {
+            handlers.onEvent(event)
+          },
+          onEose: () => {
+            relayStatuses[index].eoseReceived = true
+            // Check if all relays have sent EOSE
+            if (relayStatuses.every(s => s.eoseReceived)) {
+              handlers.onEose()
+            }
+          },
+          onClosed: (message) => {
+            relayStatuses[index].closedReceived = true
+            handlers.onClosed(message)
+          }
+        }
+
+        await relay.sendReq(relaySubscriptionId, filters, relayHandlers)
+      })
+
+      // Store subscription info
+      this.activeSubscriptions.set(subscriptionId, {
+        relaySubscriptions,
+        handlers,
+        seenEventIds,
+        relayStatuses
+      })
+
+      // Subscribe to all relays concurrently
+      const results = await Promise.allSettled(subscriptionPromises)
+
+      // Check if any relay subscription failed and clean up if so
+      const hasFailures = results.some(result => result.status === 'rejected')
+      if (hasFailures) {
+        this.activeSubscriptions.delete(subscriptionId)
+        const errors = results
+          .filter(result => result.status === 'rejected')
+          .map(result => result.reason)
+        throw new Error(`Failed to create subscription on some relays: ${errors.map(e => e.message).join(', ')}`)
+      }
     } catch (err) {
       wlogger.error('Error creating subscription:', err)
       this.activeSubscriptions.delete(subscriptionId)
@@ -66,7 +126,7 @@ class ManageSubscriptionUseCase {
   }
 
   /**
-   * Close a subscription
+   * Close a subscription across all relays
    * @param {string} subscriptionId - Subscription ID to close
    * @returns {Promise<void>}
    */
@@ -76,9 +136,21 @@ class ManageSubscriptionUseCase {
         throw new Error(`Subscription ${subscriptionId} not found`)
       }
 
-      wlogger.info(`Closing subscription ${subscriptionId}`)
+      wlogger.info(`Closing subscription ${subscriptionId} across all relays`)
 
-      await this.adapters.nostrRelay.sendClose(subscriptionId)
+      const subscriptionInfo = this.activeSubscriptions.get(subscriptionId)
+      const { relaySubscriptions } = subscriptionInfo
+
+      // Close subscriptions on all relays concurrently
+      const closePromises = Array.from(relaySubscriptions.entries()).map(async ([relayIndex, relaySubscriptionId]) => {
+        try {
+          await this.adapters.nostrRelays[relayIndex].sendClose(relaySubscriptionId)
+        } catch (err) {
+          wlogger.warn(`Error closing subscription on relay ${relayIndex}:`, err.message)
+        }
+      })
+
+      await Promise.allSettled(closePromises)
       this.activeSubscriptions.delete(subscriptionId)
     } catch (err) {
       wlogger.error('Error closing subscription:', err)

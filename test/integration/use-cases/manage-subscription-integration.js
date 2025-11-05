@@ -23,10 +23,12 @@ describe('#manage-subscription-integration.js', () => {
   })
 
   after(async () => {
-    // Clean up all subscriptions
+    // Clean up all subscriptions and disconnect from all relays
     // Note: This is a simplified cleanup - in production you'd track all subscriptions
-    if (adapters && adapters.nostrRelay) {
-      await adapters.nostrRelay.disconnect()
+    if (adapters && adapters.nostrRelays) {
+      await Promise.allSettled(
+        adapters.nostrRelays.map(relay => relay.disconnect())
+      )
     }
   })
 

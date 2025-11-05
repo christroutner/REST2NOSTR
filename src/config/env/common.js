@@ -23,8 +23,28 @@ export default {
   // Logging level
   logLevel: process.env.LOG_LEVEL || 'info',
 
-  // Nostr relay configuration
-  nostrRelayUrl: process.env.NOSTR_RELAY_URL || 'wss://nostr-relay.psfoundation.info',
+  // Nostr relay configuration (array of relay URLs)
+  nostrRelayUrls: (() => {
+    // Support NOSTR_RELAY_URLS (plural) as comma-separated string or JSON array
+    if (process.env.NOSTR_RELAY_URLS) {
+      try {
+        // Try parsing as JSON array first
+        const parsed = JSON.parse(process.env.NOSTR_RELAY_URLS)
+        if (Array.isArray(parsed)) {
+          return parsed.filter(url => url && typeof url === 'string')
+        }
+      } catch (e) {
+        // Not JSON, treat as comma-separated string
+        return process.env.NOSTR_RELAY_URLS.split(',').map(url => url.trim()).filter(url => url.length > 0)
+      }
+    }
+    // Backward compatibility: support NOSTR_RELAY_URL (singular)
+    if (process.env.NOSTR_RELAY_URL) {
+      return [process.env.NOSTR_RELAY_URL]
+    }
+    // Default
+    return ['wss://nostr-relay.psfoundation.info']
+  })(),
 
   // Version
   version

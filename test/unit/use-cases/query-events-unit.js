@@ -20,12 +20,13 @@ describe('#query-events.js', () => {
   beforeEach(() => {
     sandbox = sinon.createSandbox()
 
-    // Create mock adapters
+    // Create mock adapters with multiple relays support
     mockAdapters = {
-      nostrRelay: {
-        sendReq: sandbox.stub(),
-        sendClose: sandbox.stub()
-      }
+      nostrRelays: [
+        { relayUrl: 'wss://relay1.example.com' },
+        { relayUrl: 'wss://relay2.example.com' }
+      ],
+      queryAllRelays: sandbox.stub()
     }
 
     uut = new QueryEventsUseCase({ adapters: mockAdapters })
@@ -36,108 +37,48 @@ describe('#query-events.js', () => {
   })
 
   describe('#execute()', () => {
-    it('should successfully query events and return them', async () => {
+    it('should successfully query events from all relays and return merged results', async () => {
       const filters = [{ kinds: [1], limit: 10 }]
       const subscriptionId = 'test-sub-123'
 
-      // Mock handlers that capture events
-      mockAdapters.nostrRelay.sendReq.callsFake((subId, filterArray, handlers) => {
-        // Simulate receiving events
-        setTimeout(() => {
-          mockEventsArray.forEach(event => {
-            handlers.onEvent(event)
-          })
-          handlers.onEose()
-        }, 10)
-      })
+      // Mock queryAllRelays to return events
+      mockAdapters.queryAllRelays.resolves(mockEventsArray)
 
-      mockAdapters.nostrRelay.sendClose.resolves()
-
-      const resultPromise = uut.execute(filters, subscriptionId)
-
-      // Wait a bit for events to be received
-      await new Promise(resolve => setTimeout(resolve, 50))
-
-      const result = await resultPromise
+      const result = await uut.execute(filters, subscriptionId)
 
       // Assert adapter was called correctly
-      assert.isTrue(mockAdapters.nostrRelay.sendReq.calledOnce)
-      const sendReqArgs = mockAdapters.nostrRelay.sendReq.getCall(0).args
-      assert.equal(sendReqArgs[0], subscriptionId)
-      assert.deepEqual(sendReqArgs[1], filters)
-
-      // Assert close was called
-      assert.isTrue(mockAdapters.nostrRelay.sendClose.calledOnce)
-      assert.equal(mockAdapters.nostrRelay.sendClose.getCall(0).args[0], subscriptionId)
+      assert.isTrue(mockAdapters.queryAllRelays.calledOnce)
+      const callArgs = mockAdapters.queryAllRelays.getCall(0).args
+      assert.deepEqual(callArgs[0], filters)
+      assert.equal(callArgs[1], subscriptionId)
 
       // Assert result contains events
       assert.isArray(result)
       assert.equal(result.length, mockEventsArray.length)
     })
 
-    it('should handle CLOSED message from relay', async () => {
+    it('should handle errors from queryAllRelays', async () => {
       const filters = [{ kinds: [1] }]
       const subscriptionId = 'test-sub-123'
 
-      // Mock handlers that send CLOSED
-      mockAdapters.nostrRelay.sendReq.callsFake((subId, filterArray, handlers) => {
-        setTimeout(() => {
-          handlers.onClosed('Subscription closed by relay')
-        }, 10)
-      })
-
-      mockAdapters.nostrRelay.sendClose.resolves()
+      mockAdapters.queryAllRelays.rejects(new Error('Query failed'))
 
       try {
         await uut.execute(filters, subscriptionId)
         assert.equal(true, false, 'unexpected result')
       } catch (err) {
-        assert.include(err.message, 'Subscription closed')
-        assert.include(err.message, 'Subscription closed by relay')
+        assert.include(err.message, 'Query failed')
       }
     })
 
-    it('should handle timeout when EOSE not received', async function () {
-      this.timeout(5000) // Reduced timeout since we're using stubs
+    it('should return empty array when no events found', async () => {
       const filters = [{ kinds: [1] }]
       const subscriptionId = 'test-sub-123'
 
-      // Mock handlers that never send EOSE
-      mockAdapters.nostrRelay.sendReq.callsFake(() => {
-        // Don't call any handlers - this simulates EOSE never being received
-      })
+      mockAdapters.queryAllRelays.resolves([])
 
-      mockAdapters.nostrRelay.sendClose.resolves()
+      const result = await uut.execute(filters, subscriptionId)
 
-      // Stub Date.now() to simulate time passing
-      // First call sets startTime, subsequent calls should exceed timeout
-      const realStartTime = Date.now()
-      let callCount = 0
-      sandbox.stub(Date, 'now').callsFake(() => {
-        callCount++
-        // Allow first few calls to return real time (logger + startTime assignment)
-        // After that, return time that exceeds timeout (30s = 30000ms)
-        if (callCount <= 2) {
-          return realStartTime
-        } else {
-          return realStartTime + 30001
-        }
-      })
-
-      // Stub setTimeout to execute immediately
-      const originalSetTimeout = global.setTimeout
-      sandbox.stub(global, 'setTimeout').callsFake((fn, delay) => {
-        // Execute the callback immediately but asynchronously
-        return originalSetTimeout(fn, 0)
-      })
-
-      // Start the execute promise
-      const resultPromise = uut.execute(filters, subscriptionId)
-
-      // Wait for the promise to resolve
-      const result = await resultPromise
-
-      // Should return empty array after timeout
       assert.isArray(result)
       assert.equal(result.length, 0)
     })
@@ -152,13 +93,13 @@ describe('#query-events.js', () => {
       }
     })
 
-    it('should require NostrRelay adapter', () => {
+    it('should require NostrRelay adapters array', () => {
       try {
         // eslint-disable-next-line no-new
         new QueryEventsUseCase({ adapters: {} })
         assert.equal(true, false, 'unexpected result')
       } catch (err) {
-        assert.include(err.message, 'NostrRelay adapter required')
+        assert.include(err.message, 'NostrRelay adapters array required')
       }
     })
   })

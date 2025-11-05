@@ -12,15 +12,15 @@ class PublishEventUseCase {
     if (!this.adapters) {
       throw new Error('Adapters instance required')
     }
-    if (!this.adapters.nostrRelay) {
-      throw new Error('NostrRelay adapter required')
+    if (!this.adapters.nostrRelays || !Array.isArray(this.adapters.nostrRelays) || this.adapters.nostrRelays.length === 0) {
+      throw new Error('NostrRelay adapters array required')
     }
   }
 
   /**
-   * Publish an event to the Nostr relay
+   * Publish an event to all Nostr relays (broadcast)
    * @param {Object} eventData - Event data (must be signed)
-   * @returns {Promise<Object>} Result with accepted status and message
+   * @returns {Promise<Object>} Result with accepted status, message, and relay results
    */
   async execute (eventData) {
     try {
@@ -32,17 +32,50 @@ class PublishEventUseCase {
         throw new Error('Invalid event structure')
       }
 
-      wlogger.info(`Publishing event ${event.id} (kind ${event.kind})`)
+      wlogger.info(`Publishing event ${event.id} (kind ${event.kind}) to ${this.adapters.nostrRelays.length} relay(s)`)
 
-      // Send event to relay
-      const result = await this.adapters.nostrRelay.sendEvent(event.toJSON())
+      // Broadcast event to all relays
+      const results = await this.adapters.broadcastEvent(event.toJSON())
 
-      wlogger.info(`Event ${event.id} ${result.accepted ? 'accepted' : 'rejected'}: ${result.message}`)
+      // Aggregate results
+      const acceptedRelays = results.filter(r => r.accepted)
+      const rejectedRelays = results.filter(r => !r.accepted)
+      const failedRelays = results.filter(r => !r.success)
+
+      const atLeastOneAccepted = acceptedRelays.length > 0
+      const allAccepted = acceptedRelays.length === results.length && failedRelays.length === 0
+
+      // Build aggregated message
+      let message = ''
+      if (allAccepted) {
+        message = `Accepted by all ${acceptedRelays.length} relay(s)`
+      } else if (atLeastOneAccepted) {
+        message = `Accepted by ${acceptedRelays.length}/${results.length} relay(s)`
+        if (rejectedRelays.length > 0) {
+          message += `, rejected by ${rejectedRelays.length} relay(s)`
+        }
+        if (failedRelays.length > 0) {
+          message += `, failed to reach ${failedRelays.length} relay(s)`
+        }
+      } else {
+        message = `Rejected or failed by all ${results.length} relay(s)`
+        if (rejectedRelays.length > 0) {
+          const rejectionMessages = rejectedRelays.map(r => r.message).filter(m => m).join('; ')
+          if (rejectionMessages) {
+            message += `: ${rejectionMessages}`
+          }
+        }
+      }
+
+      wlogger.info(`Event ${event.id} ${atLeastOneAccepted ? 'accepted' : 'rejected/failed'}: ${message}`)
 
       return {
-        accepted: result.accepted,
-        message: result.message || '',
-        eventId: event.id
+        accepted: atLeastOneAccepted,
+        message,
+        eventId: event.id,
+        relayResults: results,
+        acceptedCount: acceptedRelays.length,
+        totalRelays: results.length
       }
     } catch (err) {
       wlogger.error('Error in PublishEventUseCase:', err)
