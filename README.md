@@ -27,6 +27,25 @@ This project follows Clean Architecture principles with clear separation of conc
 
 ## Installation
 
+### Production Docker Installation
+
+Ensure you have Docker and Docker Compose installed on your Ubuntu OS system.
+
+- `cd production/docker`
+- `docker-compose build --no-cache`
+- `docker-compose up -d`
+
+Bring the containers down with:
+
+- `docker-compose down`
+
+Follow logs with:
+
+- `docker logs --tail 20 -f rest2nostr`
+
+
+### Dev Environment Installations
+
 1. Install dependencies:
 ```bash
 npm install
