@@ -42,6 +42,15 @@ class Server {
         allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
       }))
 
+      // Endpoint logging middleware
+      app.use((req, res, next) => {
+        console.log(`Endpoint called: ${req.method} ${req.path}`)
+        res.on('finish', () => {
+          console.log(`Endpoint responded: ${req.method} ${req.path} - ${res.statusCode}`)
+        })
+        next()
+      })
+
       // Request logging middleware
       app.use((req, res, next) => {
         wlogger.info(`${req.method} ${req.path}`)
