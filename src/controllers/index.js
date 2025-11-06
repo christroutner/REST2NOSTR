@@ -8,6 +8,7 @@
 import Adapters from '../adapters/index.js'
 import UseCases from '../use-cases/index.js'
 import RESTControllers from './rest-api/index.js'
+import TimerController from './timer-controller.js'
 import config from '../config/index.js'
 
 class Controllers {
@@ -16,6 +17,7 @@ class Controllers {
     this.adapters = new Adapters(localConfig)
     this.useCases = new UseCases({ adapters: this.adapters })
     this.config = config
+    this.timerController = new TimerController({ adapters: this.adapters, useCases: this.useCases })
 
     // Bind 'this' object to all subfunctions
     this.initAdapters = this.initAdapters.bind(this)
@@ -31,6 +33,11 @@ class Controllers {
   // Run any Use Cases to startup the app.
   async initUseCases () {
     await this.useCases.start()
+  }
+
+  // Initialize all the controllers.
+  async initControllers () {
+    this.timerController.startTimerControllers()
   }
 
   // Top-level function for this library.

@@ -74,6 +74,9 @@ class Server {
       // Attach REST API controllers to the app.
       this.controllers.attachRESTControllers(app)
 
+      // Initialize any other controller libraries.
+      this.controllers.initControllers()
+
       // Serve static assets from docs directory
       const __filename = fileURLToPath(import.meta.url)
       const __dirname = dirname(__filename)
