@@ -279,14 +279,29 @@ describe('#req-controller.js', () => {
       const req = createMockRequestWithParams({ subId: 'test-sub-123' })
       const res = createMockResponse()
 
-      mockUseCases.manageSubscription.closeSubscription.rejects(new Error('Subscription not found'))
+      mockUseCases.manageSubscription.closeSubscription.rejects(new Error('Relay connection error'))
 
       await uut.closeSubscription(req, res)
 
       // Assert error response
       assert.equal(res.statusValue, 500)
       assert.property(res.jsonData, 'error')
-      assert.include(res.jsonData.error, 'Subscription not found')
+      assert.include(res.jsonData.error, 'Relay connection error')
+    })
+
+    it('should handle idempotent close (subscription already closed)', async () => {
+      const req = createMockRequestWithParams({ subId: 'test-sub-123' })
+      const res = createMockResponse()
+
+      // closeSubscription resolves successfully even if subscription doesn't exist
+      mockUseCases.manageSubscription.closeSubscription.resolves()
+
+      await uut.closeSubscription(req, res)
+
+      // Assert success response even for already-closed subscription
+      assert.equal(res.statusValue, 200)
+      assert.property(res.jsonData, 'message')
+      assert.include(res.jsonData.message, 'closed successfully')
     })
   })
 

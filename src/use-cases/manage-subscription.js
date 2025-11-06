@@ -169,8 +169,9 @@ class ManageSubscriptionUseCase {
   async closeSubscription (subscriptionId) {
     try {
       if (!this.activeSubscriptions.has(subscriptionId)) {
-        // Subscription doesn't exist - throw error
-        throw new Error(`Subscription ${subscriptionId} not found`)
+        // Subscription doesn't exist - already closed, treat as success (idempotent)
+        wlogger.info(`Subscription ${subscriptionId} already closed or does not exist`)
+        return
       }
 
       wlogger.info(`Closing subscription ${subscriptionId} across all relays`)

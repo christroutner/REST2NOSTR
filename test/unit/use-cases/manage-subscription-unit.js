@@ -170,15 +170,14 @@ describe('#manage-subscription.js', () => {
       assert.isFalse(uut.hasSubscription(subscriptionId))
     })
 
-    it('should throw error when closing non-existent subscription', async () => {
+    it('should return successfully when closing non-existent subscription (idempotent)', async () => {
       const subscriptionId = 'non-existent-sub'
 
-      try {
-        await uut.closeSubscription(subscriptionId)
-        assert.equal(true, false, 'unexpected result')
-      } catch (err) {
-        assert.include(err.message, 'not found')
-      }
+      // Should not throw - idempotent operation
+      await uut.closeSubscription(subscriptionId)
+
+      // Should return successfully without error
+      assert.isTrue(true, 'closeSubscription should succeed for non-existent subscription')
     })
 
     it('should clean up subscription even on error', async () => {
