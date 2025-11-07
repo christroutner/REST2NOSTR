@@ -166,7 +166,8 @@ class NostrRelayAdapter {
   }
 
   handleClose () {
-    wlogger.warn('WebSocket connection closed')
+    const now = new Date()
+    wlogger.warn(`WebSocket connection closed at ${now.toLocaleString()}`)
     this.isConnected = false
 
     // Attempt to reconnect
