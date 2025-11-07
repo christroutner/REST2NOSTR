@@ -142,6 +142,16 @@ class Server {
         wlogger.info(`Server started on port ${this.config.port}`)
       })
 
+      this.server.on('error', (err) => {
+        console.error('Server error:', err)
+        wlogger.error('Server error:', err)
+      })
+
+      this.server.on('close', () => {
+        console.log('Server closed')
+        wlogger.info('Server closed')
+      })
+
       return app
     } catch (err) {
       console.error('Could not start server. Error: ', err)
