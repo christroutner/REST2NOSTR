@@ -24,14 +24,17 @@ class TimerController {
 
     // Constants
     this.SHUTDOWN_INTERVAL_MS = 10 * 60 * 1000 // 10 minutes in milliseconds
+    this.LIVENESS_CHECK_INTERVAL_MS = 1 * 60 * 1000 // 1 minute in milliseconds
 
     // Handlers
     this.shutdownHandler = null
+    this.livenessCheckHandler = null
 
     // Bind 'this' object to all subfunctions
     this.startTimerControllers = this.startTimerControllers.bind(this)
     this.stopTimerControllers = this.stopTimerControllers.bind(this)
     this.shutdown = this.shutdown.bind(this)
+    this.livenessCheck = this.livenessCheck.bind(this)
   }
 
   startTimerControllers () {
@@ -40,6 +43,10 @@ class TimerController {
     this.shutdownHandler = setInterval(() => {
       this.shutdown()
     }, this.SHUTDOWN_INTERVAL_MS)
+
+    this.livenessCheckHandler = setInterval(() => {
+      this.livenessCheck()
+    }, this.LIVENESS_CHECK_INTERVAL_MS)
   }
 
   stopTimerControllers () {
@@ -47,12 +54,18 @@ class TimerController {
 
     clearInterval(this.shutdownHandler)
     this.shutdownHandler = null
+    clearInterval(this.livenessCheckHandler)
+    this.livenessCheckHandler = null
   }
 
   // Execute the shutdown callback
   shutdown () {
     wlogger.info(`TimerController: Shutting down application at ${new Date().toISOString()}, depending on process manager to restart application.`)
     process.exit(1)
+  }
+
+  livenessCheck () {
+    wlogger.info(`TimerController: Liveness check at ${new Date().toISOString()}`)
   }
 }
 
