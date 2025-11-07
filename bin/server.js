@@ -18,6 +18,32 @@ import wlogger from '../src/adapters/wlogger.js'
 // Load environment variables
 dotenv.config()
 
+// Set up global error handlers to prevent server crashes
+// These must be set up before the server starts to catch any unhandled errors
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason)
+  wlogger.error('Unhandled Rejection:', {
+    promise: promise.toString(),
+    reason: reason instanceof Error ? reason.stack : String(reason)
+  })
+  // Don't exit the process - log and continue
+  // The server should remain running to handle other requests
+})
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error)
+  wlogger.error('Uncaught Exception:', {
+    message: error.message,
+    stack: error.stack
+  })
+  // For uncaught exceptions, we should exit gracefully
+  // but give time for the process manager to restart
+  console.log('Exiting after 5 seconds due to uncaught exception. Process manager should restart.')
+  setTimeout(() => {
+    process.exit(1)
+  }, 5000)
+})
+
 class Server {
   constructor () {
     // Encapsulate dependencies

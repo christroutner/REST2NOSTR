@@ -147,23 +147,69 @@ class ReqRESTControllerLib {
       res.setHeader('Connection', 'keep-alive')
       res.setHeader('X-Accel-Buffering', 'no') // Disable buffering in nginx
 
+      // Track if response is still writable
+      let isResponseWritable = true
+
+      // Helper function to safely write to SSE stream
+      const safeWrite = (data) => {
+        if (!isResponseWritable) {
+          return false
+        }
+        try {
+          if (!res.writable || res.destroyed || res.closed) {
+            isResponseWritable = false
+            return false
+          }
+          return res.write(data)
+        } catch (err) {
+          wlogger.warn(`Error writing to SSE stream for subscription ${subId}:`, err.message)
+          isResponseWritable = false
+          return false
+        }
+      }
+
+      // Handle response stream errors
+      res.on('error', (err) => {
+        wlogger.warn(`Response stream error for subscription ${subId}:`, err.message)
+        isResponseWritable = false
+        // Clean up subscription on stream error
+        this.useCases.manageSubscription.closeSubscription(subId).catch(closeErr => {
+          wlogger.error('Error closing subscription on stream error:', closeErr)
+        })
+      })
+
       // Send initial connection message
-      res.write(`data: ${JSON.stringify({ type: 'connected', subscriptionId: subId })}\n\n`)
+      if (!safeWrite(`data: ${JSON.stringify({ type: 'connected', subscriptionId: subId })}\n\n`)) {
+        wlogger.warn(`Failed to send initial connection message for subscription ${subId}`)
+        return res.status(500).json({ error: 'Failed to establish SSE connection' })
+      }
 
       // Handle events
       const onEvent = (event) => {
-        res.write(`data: ${JSON.stringify({ type: 'event', data: event })}\n\n`)
+        if (!safeWrite(`data: ${JSON.stringify({ type: 'event', data: event })}\n\n`)) {
+          wlogger.debug(`Cannot write event to SSE stream for subscription ${subId} - connection may be closed`)
+        }
       }
 
       // Handle EOSE
       const onEose = () => {
-        res.write(`data: ${JSON.stringify({ type: 'eose' })}\n\n`)
+        if (!safeWrite(`data: ${JSON.stringify({ type: 'eose' })}\n\n`)) {
+          wlogger.debug(`Cannot write EOSE to SSE stream for subscription ${subId} - connection may be closed`)
+        }
       }
 
       // Handle CLOSED
       const onClosed = (message) => {
-        res.write(`data: ${JSON.stringify({ type: 'closed', message })}\n\n`)
-        res.end()
+        if (safeWrite(`data: ${JSON.stringify({ type: 'closed', message })}\n\n`)) {
+          try {
+            if (!res.destroyed && !res.closed) {
+              res.end()
+            }
+          } catch (err) {
+            wlogger.warn(`Error ending SSE stream for subscription ${subId}:`, err.message)
+          }
+        }
+        isResponseWritable = false
       }
 
       // Create subscription
@@ -178,9 +224,15 @@ class ReqRESTControllerLib {
       // Handle client disconnect
       req.on('close', () => {
         wlogger.info(`Client disconnected from subscription ${subId}`)
+        isResponseWritable = false
         this.useCases.manageSubscription.closeSubscription(subId).catch(err => {
           wlogger.error('Error closing subscription on disconnect:', err)
         })
+      })
+
+      // Handle response finish
+      res.on('finish', () => {
+        isResponseWritable = false
       })
     } catch (err) {
       return this.handleError(err, req, res)
