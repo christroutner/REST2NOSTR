@@ -22,7 +22,11 @@ export function createMockResponse () {
     statusValue: null,
     headers: {},
     writeData: [],
-    endCalled: false
+    endCalled: false,
+    writable: true, // Stream is writable by default
+    destroyed: false, // Stream is not destroyed by default
+    closed: false, // Stream is not closed by default
+    eventHandlers: {} // Store event handlers
   }
 
   res.status = function (code) {
@@ -52,11 +56,27 @@ export function createMockResponse () {
   }
 
   res.on = function (event, callback) {
-    // For SSE connection close handling
+    // Store event handlers for different event types
+    if (!res.eventHandlers[event]) {
+      res.eventHandlers[event] = []
+    }
+    res.eventHandlers[event].push(callback)
+
+    // For backward compatibility with existing tests
     if (event === 'close') {
       res.closeCallback = callback
     }
+
     return res
+  }
+
+  // Helper to trigger an event (useful for testing)
+  res.trigger = function (event, ...args) {
+    if (res.eventHandlers[event]) {
+      for (const handler of res.eventHandlers[event]) {
+        handler(...args)
+      }
+    }
   }
 
   return res
