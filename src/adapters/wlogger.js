@@ -45,6 +45,10 @@ class Wlogger {
         this.transport
       ]
     })
+
+    // Bind 'this' object to all methods
+    this.notifyRotation = this.notifyRotation.bind(this)
+    this.outputToConsole = this.outputToConsole.bind(this)
   }
 
   notifyRotation (oldFilename, newFilename) {
