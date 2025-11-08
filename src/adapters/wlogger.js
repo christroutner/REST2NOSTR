@@ -16,6 +16,8 @@ import config from '../config/index.js'
 import * as url from 'url'
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 
+let _this = null
+
 class Wlogger {
   constructor (localConfig = {}) {
     this.config = config
@@ -49,10 +51,12 @@ class Wlogger {
     // Bind 'this' object to all methods
     this.notifyRotation = this.notifyRotation.bind(this)
     this.outputToConsole = this.outputToConsole.bind(this)
+
+    _this = this
   }
 
   notifyRotation (oldFilename, newFilename) {
-    this.wlogger.info('Rotating log files')
+    _this.wlogger.info('Rotating log files')
   }
 
   outputToConsole () {

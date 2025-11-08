@@ -40,13 +40,13 @@ class TimerController {
   startTimerControllers () {
     console.log('Starting Timer Controllers.')
 
-    this.shutdownHandler = setInterval(() => {
-      this.shutdown()
-    }, this.SHUTDOWN_INTERVAL_MS)
+    // this.shutdownHandler = setInterval(() => {
+    //   this.shutdown()
+    // }, this.SHUTDOWN_INTERVAL_MS)
 
-    this.livenessCheckHandler = setInterval(() => {
-      this.livenessCheck()
-    }, this.LIVENESS_CHECK_INTERVAL_MS)
+    // this.livenessCheckHandler = setInterval(() => {
+    //   this.livenessCheck()
+    // }, this.LIVENESS_CHECK_INTERVAL_MS)
   }
 
   stopTimerControllers () {
